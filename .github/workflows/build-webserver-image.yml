@@ -5,7 +5,11 @@ on:
     branches: ["main"]
     tags: ["v*"]
     paths:
-      - "webserver/**"
+      - "Dockerfile"
+      - "entrypoint.sh"
+      - "install.sh"
+      - "egg-webserver.json"
+      - "README.md"
       - ".github/workflows/build-webserver-image.yml"
   workflow_dispatch:
 
@@ -47,8 +51,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./webserver
-          file: ./webserver/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
