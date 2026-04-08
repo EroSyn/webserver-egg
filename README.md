@@ -10,6 +10,7 @@ Dit egg draait in een enkele container:
 - Pterodactyl files blijven in `/home/container`.
 - De webroot `/var/www/html` is een symlink naar `/home/container`.
 - Je serveert dus altijd exact dezelfde map als in de Pterodactyl file manager.
+- MariaDB data is persistent en staat in `/home/container/mysql`.
 
 ## Build container image
 

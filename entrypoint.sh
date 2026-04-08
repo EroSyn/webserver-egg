@@ -3,6 +3,7 @@ set -euo pipefail
 
 PANEL_DIR="/home/container"
 WEBROOT="/var/www/html"
+MYSQL_DATA_DIR="${PANEL_DIR}/mysql"
 PHP_VERSION="${PHP_VERSION:-8.4}"
 APP_SCHEME="${APP_SCHEME:-http}"
 NGINX_CONFIG_RAW="${NGINX_CONFIG:-}"
@@ -32,7 +33,7 @@ if [[ ! "$DB_USER" =~ ^[A-Za-z0-9_]+$ ]]; then
   exit 1
 fi
 
-mkdir -p "$PANEL_DIR" /var/www /run/php /run/mysqld /etc/nginx/conf.d /etc/mysql
+mkdir -p "$PANEL_DIR" "$MYSQL_DATA_DIR" /var/www /run/php /run/mysqld /etc/nginx/conf.d /etc/mysql
 chown -R root:root /run/php /run/mysqld
 
 rm -rf "$WEBROOT"
@@ -121,11 +122,11 @@ else
   fi
 fi
 
-if [[ ! -d "/var/lib/mysql/mysql" ]]; then
-  mariadb-install-db --user=root --datadir=/var/lib/mysql >/dev/null 2>&1
+if [[ ! -d "${MYSQL_DATA_DIR}/mysql" ]]; then
+  mariadb-install-db --user=root --datadir="${MYSQL_DATA_DIR}" >/dev/null 2>&1
 fi
 
-mysqld --user=root --datadir=/var/lib/mysql --socket=/run/mysqld/mysqld.sock --bind-address=127.0.0.1 &
+mysqld --user=root --datadir="${MYSQL_DATA_DIR}" --socket=/run/mysqld/mysqld.sock --bind-address=127.0.0.1 &
 MYSQL_PID=$!
 
 for _ in $(seq 1 30); do
