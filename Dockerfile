@@ -45,6 +45,7 @@ RUN apt-get update \
         tar \
         unzip \
         git \
+        composer \
         openssl \
         procps \
         tini \
