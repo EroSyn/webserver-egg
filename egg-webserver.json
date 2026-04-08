@@ -1,0 +1,132 @@
+{
+  "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - MODIFIED MANUALLY FOR CUSTOM EGG",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-04-08T10:45:00+00:00",
+  "name": "Webserver",
+  "author": "you@example.com",
+  "description": "All-in-one webserver egg met NGINX + PHP-FPM (8.4/8.5) + MariaDB, met webroot gekoppeld aan /var/www/html.",
+  "features": [],
+  "docker_images": {
+    "Custom Webserver Image": "ghcr.io/your-org/pterodactyl-webserver:latest"
+  },
+  "file_denylist": [],
+  "startup": "/usr/local/bin/entrypoint.sh",
+  "config": {
+    "files": "{}",
+    "startup": "{\n    \"done\": \"ready for connections\"\n}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\n# Pterodactyl install script\nset -euo pipefail\n\nmkdir -p /mnt/server\ncd /mnt/server\n\nif [ ! -f \"index.php\" ]; then\ncat > index.php <<'PHP'\n<?php\nphpinfo();\nPHP\nfi\n",
+      "container": "debian:bookworm-slim",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Console Mode",
+      "description": "Kies 'bash' voor interactieve shell in Pterodactyl console, of 'services' voor alleen service logs.",
+      "env_variable": "CONSOLE_MODE",
+      "default_value": "bash",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:bash,services",
+      "field_type": "text"
+    },
+    {
+      "name": "PHP Version",
+      "description": "Kies welke PHP-FPM versie gestart wordt.",
+      "env_variable": "PHP_VERSION",
+      "default_value": "8.4",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:8.4,8.5",
+      "field_type": "text"
+    },
+    {
+      "name": "Scheme",
+      "description": "Kies HTTP of HTTPS voor de default NGINX vhost.",
+      "env_variable": "APP_SCHEME",
+      "default_value": "http",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:http,https",
+      "field_type": "text"
+    },
+    {
+      "name": "Custom NGINX Config",
+      "description": "Laat leeg voor automatische config. Vul in om /etc/nginx/conf.d/default.conf volledig te overschrijven.",
+      "env_variable": "NGINX_CONFIG",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string",
+      "field_type": "textarea"
+    },
+    {
+      "name": "SSL Certificate (PEM)",
+      "description": "Optioneel. Gebruik samen met SSL_KEY wanneer APP_SCHEME=https.",
+      "env_variable": "SSL_CERT",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string",
+      "field_type": "textarea"
+    },
+    {
+      "name": "SSL Private Key (PEM)",
+      "description": "Optioneel. Gebruik samen met SSL_CERT wanneer APP_SCHEME=https.",
+      "env_variable": "SSL_KEY",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string",
+      "field_type": "textarea"
+    },
+    {
+      "name": "Database Name",
+      "description": "Database die bij startup wordt aangemaakt.",
+      "env_variable": "DB_NAME",
+      "default_value": "app",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:64",
+      "field_type": "text"
+    },
+    {
+      "name": "Database User",
+      "description": "Database user die bij startup wordt aangemaakt.",
+      "env_variable": "DB_USER",
+      "default_value": "app",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:32",
+      "field_type": "text"
+    },
+    {
+      "name": "Database Password",
+      "description": "Wachtwoord voor DB_USER.",
+      "env_variable": "DB_PASSWORD",
+      "default_value": "app_password",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|min:8|max:191",
+      "field_type": "text"
+    },
+    {
+      "name": "MariaDB Root Password",
+      "description": "Root wachtwoord voor lokale MariaDB instance.",
+      "env_variable": "DB_ROOT_PASSWORD",
+      "default_value": "root_password",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|min:8|max:191",
+      "field_type": "text"
+    }
+  ]
+}
