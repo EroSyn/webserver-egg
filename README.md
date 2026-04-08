@@ -15,7 +15,7 @@ Dit egg draait in een enkele container:
 
 ```bash
 cd webserver
-docker build -t ghcr.io/your-org/pterodactyl-webserver:latest .
+docker build -t ghcr.io/erosyn/pterodactyl-webserver:latest .
 ```
 
 Push daarna naar je registry en vervang in `egg-webserver.json` de `docker_images` tag indien nodig.
@@ -31,7 +31,7 @@ In deze repository staat een workflow op `.github/workflows/build-webserver-imag
 
 1. Pterodactyl Panel -> Nests -> Import Egg.
 2. Kies `webserver/egg-webserver.json`.
-3. Maak server aan met image `ghcr.io/your-org/pterodactyl-webserver:latest`.
+3. Maak server aan met image `ghcr.io/erosyn/pterodactyl-webserver:latest`.
 
 ## Instance settings / variables
 
