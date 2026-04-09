@@ -34,7 +34,9 @@ if [[ ! "$DB_USER" =~ ^[A-Za-z0-9_]+$ ]]; then
 fi
 
 mkdir -p "$PANEL_DIR" "$MYSQL_DATA_DIR" /var/www /run/php /run/mysqld /etc/nginx/conf.d /etc/mysql
-chown -R root:root /run/php /run/mysqld
+# Some Pterodactyl environments mount runtime dirs as read-only for chown.
+# Root ownership is already correct in that case, so we continue safely.
+chown -R root:root /run/php /run/mysqld 2>/dev/null || true
 
 rm -rf "$WEBROOT"
 ln -sfn "$PANEL_DIR" "$WEBROOT"
