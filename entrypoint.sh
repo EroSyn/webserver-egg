@@ -3,14 +3,15 @@ set -euo pipefail
 
 PANEL_DIR="/home/container"
 WEBROOT="/var/www/html"
-MYSQL_DATA_DIR="${PANEL_DIR}/mysql"
+RUNTIME_DIR="${PANEL_DIR}/.runtime"
+NGINX_RUNTIME_DIR="${RUNTIME_DIR}/nginx"
+PHP_RUNTIME_DIR="${RUNTIME_DIR}/php"
+SSL_RUNTIME_DIR="${RUNTIME_DIR}/ssl"
+PHP_SOCKET="${RUNTIME_DIR}/php-fpm.sock"
+
 PHP_VERSION="${PHP_VERSION:-8.4}"
 APP_SCHEME="${APP_SCHEME:-http}"
 NGINX_CONFIG_RAW="${NGINX_CONFIG:-}"
-DB_NAME="${DB_NAME:-app}"
-DB_USER="${DB_USER:-app}"
-DB_PASSWORD="${DB_PASSWORD:-app_password}"
-DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-root_password}"
 CONSOLE_MODE="${CONSOLE_MODE:-bash}"
 
 if [[ "$PHP_VERSION" != "8.4" && "$PHP_VERSION" != "8.5" ]]; then
@@ -23,20 +24,7 @@ if [[ "$CONSOLE_MODE" != "bash" && "$CONSOLE_MODE" != "services" ]]; then
   exit 1
 fi
 
-if [[ ! "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]]; then
-  echo "[entrypoint] DB_NAME may only contain letters, numbers, and underscores."
-  exit 1
-fi
-
-if [[ ! "$DB_USER" =~ ^[A-Za-z0-9_]+$ ]]; then
-  echo "[entrypoint] DB_USER may only contain letters, numbers, and underscores."
-  exit 1
-fi
-
-mkdir -p "$PANEL_DIR" "$MYSQL_DATA_DIR" /var/www /run/php /run/mysqld /etc/nginx/conf.d /etc/mysql
-# Some Pterodactyl environments mount runtime dirs as read-only for chown.
-# Root ownership is already correct in that case, so we continue safely.
-chown -R root:root /run/php /run/mysqld 2>/dev/null || true
+mkdir -p "$PANEL_DIR" "$RUNTIME_DIR" "$NGINX_RUNTIME_DIR" "$PHP_RUNTIME_DIR" "$SSL_RUNTIME_DIR"
 
 EFFECTIVE_WEBROOT="$WEBROOT"
 if rm -rf "$WEBROOT" 2>/dev/null && ln -sfn "$PANEL_DIR" "$WEBROOT" 2>/dev/null; then
@@ -46,11 +34,14 @@ else
   echo "[entrypoint] Could not link ${WEBROOT}; falling back to ${PANEL_DIR} as nginx root."
 fi
 
-cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf" <<PHPPOOL
+PHP_POOL_CONF="${PHP_RUNTIME_DIR}/www.conf"
+PHP_MAIN_CONF="${PHP_RUNTIME_DIR}/php-fpm.conf"
+
+cat > "$PHP_POOL_CONF" <<PHPPOOL
 [www]
 user = root
 group = root
-listen = /run/php/php-fpm.sock
+listen = ${PHP_SOCKET}
 listen.owner = root
 listen.group = root
 pm = dynamic
@@ -62,97 +53,107 @@ clear_env = no
 chdir = /
 PHPPOOL
 
-DEFAULT_HTTP_CONF='server {
+cat > "$PHP_MAIN_CONF" <<PHPCONF
+[global]
+pid = ${PHP_RUNTIME_DIR}/php-fpm.pid
+error_log = /proc/self/fd/2
+daemonize = no
+
+include=${PHP_POOL_CONF}
+PHPCONF
+
+DEFAULT_HTTP_SERVER="server {
     listen 80;
     listen [::]:80;
     server_name _;
-    root __WEBROOT__;
+    root ${EFFECTIVE_WEBROOT};
     index index.php index.html index.htm;
 
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
     location ~ \\.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php-fpm.sock;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_pass unix:${PHP_SOCKET};
     }
 
     location ~ /\\.ht {
         deny all;
     }
-}'
+}"
 
-DEFAULT_HTTPS_CONF='server {
+DEFAULT_HTTPS_SERVER="server {
     listen 443 ssl;
     listen [::]:443 ssl;
     server_name _;
-    root __WEBROOT__;
+    root ${EFFECTIVE_WEBROOT};
     index index.php index.html index.htm;
 
-    ssl_certificate /etc/nginx/ssl/selfsigned.crt;
-    ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
+    ssl_certificate ${SSL_RUNTIME_DIR}/selfsigned.crt;
+    ssl_certificate_key ${SSL_RUNTIME_DIR}/selfsigned.key;
 
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
     location ~ \\.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php-fpm.sock;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_pass unix:${PHP_SOCKET};
     }
 
     location ~ /\\.ht {
         deny all;
     }
-}'
+}"
 
+NGINX_SERVER_CONF="${NGINX_RUNTIME_DIR}/server.conf"
 if [[ -n "$NGINX_CONFIG_RAW" ]]; then
-  printf "%s\n" "$NGINX_CONFIG_RAW" > /etc/nginx/conf.d/default.conf
+  printf "%s\n" "$NGINX_CONFIG_RAW" > "$NGINX_SERVER_CONF"
 else
   if [[ "$APP_SCHEME" == "https" ]]; then
-    mkdir -p /etc/nginx/ssl
-
     if [[ -n "${SSL_CERT:-}" && -n "${SSL_KEY:-}" ]]; then
-      printf "%s\n" "$SSL_CERT" > /etc/nginx/ssl/selfsigned.crt
-      printf "%s\n" "$SSL_KEY" > /etc/nginx/ssl/selfsigned.key
+      printf "%s\n" "$SSL_CERT" > "${SSL_RUNTIME_DIR}/selfsigned.crt"
+      printf "%s\n" "$SSL_KEY" > "${SSL_RUNTIME_DIR}/selfsigned.key"
     else
       openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout /etc/nginx/ssl/selfsigned.key \
-        -out /etc/nginx/ssl/selfsigned.crt \
+        -keyout "${SSL_RUNTIME_DIR}/selfsigned.key" \
+        -out "${SSL_RUNTIME_DIR}/selfsigned.crt" \
         -subj "/C=NL/ST=Noord-Holland/L=Amsterdam/O=Pterodactyl/CN=localhost"
     fi
 
-    printf "%s\n" "${DEFAULT_HTTPS_CONF/__WEBROOT__/$EFFECTIVE_WEBROOT}" > /etc/nginx/conf.d/default.conf
+    printf "%s\n" "$DEFAULT_HTTPS_SERVER" > "$NGINX_SERVER_CONF"
   else
-    printf "%s\n" "${DEFAULT_HTTP_CONF/__WEBROOT__/$EFFECTIVE_WEBROOT}" > /etc/nginx/conf.d/default.conf
+    printf "%s\n" "$DEFAULT_HTTP_SERVER" > "$NGINX_SERVER_CONF"
   fi
 fi
 
-if [[ ! -d "${MYSQL_DATA_DIR}/mysql" ]]; then
-  mariadb-install-db --user=root --datadir="${MYSQL_DATA_DIR}" >/dev/null 2>&1
-fi
+cat > "${NGINX_RUNTIME_DIR}/nginx.conf" <<NGINXMAIN
+worker_processes auto;
+error_log /proc/self/fd/2 warn;
+pid ${NGINX_RUNTIME_DIR}/nginx.pid;
 
-mysqld --user=root --datadir="${MYSQL_DATA_DIR}" --socket=/run/mysqld/mysqld.sock --bind-address=127.0.0.1 &
-MYSQL_PID=$!
+events {
+    worker_connections 1024;
+}
 
-for _ in $(seq 1 30); do
-  if mariadb-admin --socket=/run/mysqld/mysqld.sock ping >/dev/null 2>&1; then
-    break
-  fi
-  sleep 1
-done
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    access_log /proc/self/fd/1;
+    sendfile on;
+    keepalive_timeout 65;
 
-mariadb --socket=/run/mysqld/mysqld.sock <<SQL
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}';
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
-CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
-FLUSH PRIVILEGES;
-SQL
+    include ${NGINX_SERVER_CONF};
+}
+NGINXMAIN
 
-php-fpm${PHP_VERSION} -D
-nginx -g "daemon off;" &
+php-fpm${PHP_VERSION} --fpm-config "$PHP_MAIN_CONF" &
+PHP_PID=$!
+
+nginx -c "${NGINX_RUNTIME_DIR}/nginx.conf" -g "daemon off;" &
 NGINX_PID=$!
 
 if [[ "$CONSOLE_MODE" == "bash" ]]; then
@@ -160,4 +161,4 @@ if [[ "$CONSOLE_MODE" == "bash" ]]; then
   exec /bin/bash -i
 fi
 
-wait -n "$MYSQL_PID" "$NGINX_PID"
+wait -n "$PHP_PID" "$NGINX_PID"

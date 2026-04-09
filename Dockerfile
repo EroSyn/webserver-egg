@@ -17,8 +17,6 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         nginx \
-        mariadb-server \
-        mariadb-client \
         redis-server \
         php8.4-fpm \
         php8.4-cli \
@@ -51,12 +49,12 @@ RUN apt-get update \
         tini \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /run/php /run/mysqld /var/lib/mysql /var/www \
-    && chown -R root:root /run/php /run/mysqld /var/lib/mysql /var/www
+RUN mkdir -p /run/php /var/www \
+    && chown -R root:root /run/php /var/www
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 80 443 3306
+EXPOSE 80 443
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]

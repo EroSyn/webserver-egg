@@ -7,7 +7,7 @@
   "exported_at": "2026-04-08T10:45:00+00:00",
   "name": "Webserver",
   "author": "bjorn@erosyn.net",
-  "description": "All-in-one webserver egg met NGINX + PHP-FPM (8.4/8.5) + MariaDB, met webroot gekoppeld aan /var/www/html.",
+  "description": "All-in-one webserver egg met NGINX + PHP-FPM (8.4/8.5), met webroot gekoppeld aan /var/www/html.",
   "features": [],
   "docker_images": {
     "Custom Webserver Image": "ghcr.io/erosyn/pterodactyl-webserver:latest"
@@ -87,46 +87,6 @@
       "user_editable": true,
       "rules": "nullable|string",
       "field_type": "textarea"
-    },
-    {
-      "name": "Database Name",
-      "description": "Database die bij startup wordt aangemaakt.",
-      "env_variable": "DB_NAME",
-      "default_value": "app",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|string|max:64",
-      "field_type": "text"
-    },
-    {
-      "name": "Database User",
-      "description": "Database user die bij startup wordt aangemaakt.",
-      "env_variable": "DB_USER",
-      "default_value": "app",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|string|max:32",
-      "field_type": "text"
-    },
-    {
-      "name": "Database Password",
-      "description": "Wachtwoord voor DB_USER.",
-      "env_variable": "DB_PASSWORD",
-      "default_value": "app_password",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|string|min:8|max:191",
-      "field_type": "text"
-    },
-    {
-      "name": "MariaDB Root Password",
-      "description": "Root wachtwoord voor lokale MariaDB instance.",
-      "env_variable": "DB_ROOT_PASSWORD",
-      "default_value": "root_password",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|string|min:8|max:191",
-      "field_type": "text"
     }
   ]
 }

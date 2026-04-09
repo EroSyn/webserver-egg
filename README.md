@@ -3,14 +3,12 @@
 Dit egg draait in een enkele container:
 - NGINX (latest uit Debian repository)
 - PHP-FPM (8.4 en 8.5, kiesbaar)
-- MariaDB Server
 
 ## Belangrijk gedrag
 
 - Pterodactyl files blijven in `/home/container`.
 - De webroot `/var/www/html` is een symlink naar `/home/container`.
 - Je serveert dus altijd exact dezelfde map als in de Pterodactyl file manager.
-- MariaDB data is persistent en staat in `/home/container/mysql`.
 
 ## Build container image
 
@@ -41,5 +39,4 @@ In deze repository staat een workflow op `.github/workflows/build-webserver-imag
 - `APP_SCHEME`: `http` of `https`
 - `NGINX_CONFIG`: custom volledige nginx vhost config (overschrijft default)
 - `SSL_CERT` / `SSL_KEY`: optioneel PEM cert/key voor https default config
-- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`
 
