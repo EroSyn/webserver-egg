@@ -39,11 +39,7 @@ PHP_MAIN_CONF="${PHP_RUNTIME_DIR}/php-fpm.conf"
 
 cat > "$PHP_POOL_CONF" <<PHPPOOL
 [www]
-user = root
-group = root
 listen = ${PHP_SOCKET}
-listen.owner = root
-listen.group = root
 pm = dynamic
 pm.max_children = 10
 pm.start_servers = 2
@@ -145,6 +141,11 @@ http {
     access_log /proc/self/fd/1;
     sendfile on;
     keepalive_timeout 65;
+    client_body_temp_path ${NGINX_RUNTIME_DIR}/client_temp;
+    proxy_temp_path ${NGINX_RUNTIME_DIR}/proxy_temp;
+    fastcgi_temp_path ${NGINX_RUNTIME_DIR}/fastcgi_temp;
+    uwsgi_temp_path ${NGINX_RUNTIME_DIR}/uwsgi_temp;
+    scgi_temp_path ${NGINX_RUNTIME_DIR}/scgi_temp;
 
     include ${NGINX_SERVER_CONF};
 }
