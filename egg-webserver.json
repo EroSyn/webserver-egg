@@ -6,7 +6,7 @@
   },
   "exported_at": "2026-04-08T10:45:00+00:00",
   "name": "Webserver",
-  "author": "you@example.com",
+  "author": "bjorn@erosyn.net",
   "description": "All-in-one webserver egg met NGINX + PHP-FPM (8.4/8.5) + MariaDB, met webroot gekoppeld aan /var/www/html.",
   "features": [],
   "docker_images": {

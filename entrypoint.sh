@@ -38,8 +38,13 @@ mkdir -p "$PANEL_DIR" "$MYSQL_DATA_DIR" /var/www /run/php /run/mysqld /etc/nginx
 # Root ownership is already correct in that case, so we continue safely.
 chown -R root:root /run/php /run/mysqld 2>/dev/null || true
 
-rm -rf "$WEBROOT"
-ln -sfn "$PANEL_DIR" "$WEBROOT"
+EFFECTIVE_WEBROOT="$WEBROOT"
+if rm -rf "$WEBROOT" 2>/dev/null && ln -sfn "$PANEL_DIR" "$WEBROOT" 2>/dev/null; then
+  echo "[entrypoint] Linked ${WEBROOT} -> ${PANEL_DIR}"
+else
+  EFFECTIVE_WEBROOT="$PANEL_DIR"
+  echo "[entrypoint] Could not link ${WEBROOT}; falling back to ${PANEL_DIR} as nginx root."
+fi
 
 cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf" <<PHPPOOL
 [www]
@@ -61,7 +66,7 @@ DEFAULT_HTTP_CONF='server {
     listen 80;
     listen [::]:80;
     server_name _;
-    root /var/www/html;
+    root __WEBROOT__;
     index index.php index.html index.htm;
 
     location / {
@@ -82,7 +87,7 @@ DEFAULT_HTTPS_CONF='server {
     listen 443 ssl;
     listen [::]:443 ssl;
     server_name _;
-    root /var/www/html;
+    root __WEBROOT__;
     index index.php index.html index.htm;
 
     ssl_certificate /etc/nginx/ssl/selfsigned.crt;
@@ -118,9 +123,9 @@ else
         -subj "/C=NL/ST=Noord-Holland/L=Amsterdam/O=Pterodactyl/CN=localhost"
     fi
 
-    printf "%s\n" "$DEFAULT_HTTPS_CONF" > /etc/nginx/conf.d/default.conf
+    printf "%s\n" "${DEFAULT_HTTPS_CONF/__WEBROOT__/$EFFECTIVE_WEBROOT}" > /etc/nginx/conf.d/default.conf
   else
-    printf "%s\n" "$DEFAULT_HTTP_CONF" > /etc/nginx/conf.d/default.conf
+    printf "%s\n" "${DEFAULT_HTTP_CONF/__WEBROOT__/$EFFECTIVE_WEBROOT}" > /etc/nginx/conf.d/default.conf
   fi
 fi
 
