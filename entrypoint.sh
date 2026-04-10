@@ -46,6 +46,7 @@ RUNTIME_DIR="${PANEL_DIR}/.runtime"
 NGINX_RUNTIME_DIR="${RUNTIME_DIR}/nginx"
 PHP_RUNTIME_DIR="${RUNTIME_DIR}/php"
 SSL_RUNTIME_DIR="${RUNTIME_DIR}/ssl"
+USER_SSL_DIR="${PANEL_DIR}/ssl"
 PHP_SOCKET="${RUNTIME_DIR}/php-fpm.sock"
 
 PHP_VERSION="${PHP_VERSION:-8.4}"
@@ -71,6 +72,7 @@ if [[ "$NGINX_DOCUMENT_ROOT" != "auto" && "$NGINX_DOCUMENT_ROOT" != "public" && 
 fi
 
 mkdir -p "$PANEL_DIR" "$RUNTIME_DIR" "$NGINX_RUNTIME_DIR" "$PHP_RUNTIME_DIR" "$SSL_RUNTIME_DIR"
+mkdir -p "$USER_SSL_DIR"
 
 EFFECTIVE_WEBROOT="$WEBROOT"
 if rm -rf "$WEBROOT" 2>/dev/null && ln -sfn "$PANEL_DIR" "$WEBROOT" 2>/dev/null; then
@@ -180,6 +182,9 @@ else
     if [[ -n "${SSL_CERT:-}" && -n "${SSL_KEY:-}" ]]; then
       printf "%s\n" "$SSL_CERT" > "${SSL_RUNTIME_DIR}/selfsigned.crt"
       printf "%s\n" "$SSL_KEY" > "${SSL_RUNTIME_DIR}/selfsigned.key"
+    elif [[ -f "${USER_SSL_DIR}/fullchain.pem" && -f "${USER_SSL_DIR}/privkey.pem" ]]; then
+      cp "${USER_SSL_DIR}/fullchain.pem" "${SSL_RUNTIME_DIR}/selfsigned.crt"
+      cp "${USER_SSL_DIR}/privkey.pem" "${SSL_RUNTIME_DIR}/selfsigned.key"
     else
       openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout "${SSL_RUNTIME_DIR}/selfsigned.key" \

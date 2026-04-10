@@ -58,6 +58,24 @@ In deze repository staat een workflow op `.github/workflows/build-webserver-imag
 - `NGINX_CONFIG`: custom volledige nginx `server { ... }` (overschrijft default)
 - `SSL_CERT` / `SSL_KEY`: optioneel PEM cert/key voor https default config
 
+## SSL in container (eigen certs)
+
+- Plaats eigen certs in `/home/container/ssl/` als:
+  - `/home/container/ssl/fullchain.pem`
+  - `/home/container/ssl/privkey.pem`
+- Met `APP_SCHEME=https` gebruikt het entrypoint automatisch deze files.
+- Als die ontbreken en `SSL_CERT`/`SSL_KEY` leeg zijn, maakt het entrypoint een self-signed cert.
+
+Self-signed snel genereren in de serverconsole:
+
+```bash
+mkdir -p /home/container/ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /home/container/ssl/privkey.pem \
+  -out /home/container/ssl/fullchain.pem \
+  -subj "/C=NL/ST=Noord-Holland/L=Amsterdam/O=Erosyn/CN=localhost"
+```
+
 ## Laravel deploy (aanrader)
 
 Plaats je Laravel project in `/home/container` (via file manager, git clone, of upload).
