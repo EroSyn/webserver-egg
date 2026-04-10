@@ -53,6 +53,7 @@ APP_SCHEME="${APP_SCHEME:-http}"
 NGINX_CONFIG_RAW="${NGINX_CONFIG:-}"
 NGINX_DOCUMENT_ROOT="${NGINX_DOCUMENT_ROOT:-auto}"
 CONSOLE_MODE="${CONSOLE_MODE:-bash}"
+LISTEN_PORT="${SERVER_PORT:-80}"
 
 if [[ "$PHP_VERSION" != "8.4" && "$PHP_VERSION" != "8.5" ]]; then
   echo "[entrypoint] Unsupported PHP version '$PHP_VERSION'. Use 8.4 or 8.5."
@@ -123,8 +124,8 @@ include=${PHP_POOL_CONF}
 PHPCONF
 
 DEFAULT_HTTP_SERVER="server {
-    listen 80;
-    listen [::]:80;
+    listen ${LISTEN_PORT};
+    listen [::]:${LISTEN_PORT};
     server_name _;
     server_tokens off;
     root ${NGINX_ROOT};
@@ -146,8 +147,8 @@ DEFAULT_HTTP_SERVER="server {
 }"
 
 DEFAULT_HTTPS_SERVER="server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen ${LISTEN_PORT} ssl;
+    listen [::]:${LISTEN_PORT} ssl;
     server_name _;
     server_tokens off;
     root ${NGINX_ROOT};
