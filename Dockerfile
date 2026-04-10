@@ -55,6 +55,9 @@ RUN mkdir -p /run/php /var/www \
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Image default user; Wings may still start the container with panel UID (see README).
+USER root
+
 EXPOSE 80 443
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]

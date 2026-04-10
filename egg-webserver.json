@@ -10,7 +10,7 @@
   "description": "NGINX + PHP-FPM (8.4/8.5); zelfde app-layout als docker/ (/home/container ↔ /app), optioneel public/ als document root.",
   "features": [],
   "docker_images": {
-    "Custom Webserver Image": "ghcr.io/erosyn/pterodactyl-webserver:latest"
+    "Custom Webserver Image": "ghcr.io/erosyn/erosyn-webserver:latest"
   },
   "file_denylist": [],
   "startup": "/usr/local/bin/entrypoint.sh",
@@ -70,7 +70,7 @@
     },
     {
       "name": "Custom NGINX Config",
-      "description": "Laat leeg voor automatische vhost. Vul in voor volledige server {} (zie repo docker/nginx/pterodactyl-webserver.conf).",
+      "description": "Laat leeg voor automatische vhost. Vul in voor volledige server {} (zie repo docker/nginx/erosyn-webserver.conf).",
       "env_variable": "NGINX_CONFIG",
       "default_value": "",
       "user_viewable": true,

@@ -1,6 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Pterodactyl/Wings often runs the process as a UID without /etc/passwd → bash shows "I have no name!".
+ensure_identity() {
+  local uid gid name fix rc
+  uid=$(id -u)
+  gid=$(id -g)
+  if command -v getent &>/dev/null && getent passwd "$uid" &>/dev/null; then
+    return 0
+  fi
+  name="container"
+  if [[ "$uid" -eq 0 ]]; then
+    name="root"
+  fi
+  if [[ -w /etc/passwd ]]; then
+    echo "${name}:x:${uid}:${gid}:${name}:/home/container:/bin/bash" >> /etc/passwd 2>/dev/null || true
+  fi
+  if command -v getent &>/dev/null && ! getent group "$gid" &>/dev/null && [[ -w /etc/group ]]; then
+    echo "${name}:x:${gid}:" >> /etc/group 2>/dev/null || true
+  fi
+  if command -v getent &>/dev/null && getent passwd "$uid" &>/dev/null; then
+    return 0
+  fi
+  fix="/home/container/.bash_erosyn_prompt"
+  rc="/home/container/.bashrc"
+  mkdir -p /home/container
+  cat > "$fix" <<EOF
+export USER=${name}
+export LOGNAME=${name}
+export HOME=/home/container
+PS1='${name}@\h:\w\\\$ '
+EOF
+  if [[ -f "$rc" ]]; then
+    grep -q bash_erosyn_prompt "$rc" 2>/dev/null || echo "[ -f ${fix} ] && . ${fix} # bash_erosyn_prompt" >> "$rc"
+  else
+    echo "[ -f ${fix} ] && . ${fix} # bash_erosyn_prompt" > "$rc"
+  fi
+}
+
+ensure_identity
+
 PANEL_DIR="/home/container"
 WEBROOT="/var/www/html"
 RUNTIME_DIR="${PANEL_DIR}/.runtime"
@@ -186,6 +225,8 @@ NGINX_PID=$!
 
 if [[ "$CONSOLE_MODE" == "bash" ]]; then
   echo "[entrypoint] Console mode is bash. Services are running in background."
+  export HOME="${HOME:-/home/container}"
+  cd "$HOME" 2>/dev/null || true
   exec /bin/bash -i
 fi
 

@@ -11,6 +11,12 @@ Dit egg draait in een enkele container:
 - Met `NGINX_DOCUMENT_ROOT=auto` (default): als `public/index.php` bestaat, is de document root `/home/container/public` (zoals `root /app/public` lokaal).
 - Symlink `/var/www/html` → `/home/container` wordt geprobeerd; lukt dat niet, dan wordt direct `/home/container` gebruikt.
 
+## Shell / `I have no name!`
+
+Wings start je container vaak met een **numerieke UID** zonder regel in `/etc/passwd`, waardoor bash `I have no name!` toont. Het entrypoint probeert een passende passwd-regel toe te voegen (als dat mag) en anders een prompt-fix in `/home/container/.bashrc`.
+
+**Echte UID 0 (root)** krijg je alleen als je node/panel de server laat draaien als root (Wings/docker user); de image staat op `USER root`, maar Wings kan `--user` meegeven. Zonder root blijf je een gewone container-user, meestal met naam `container` in de prompt na de fix.
+
 ## Pariteit met `docker/`
 
 | Lokaal (Compose) | Pterodactyl egg |
@@ -19,13 +25,13 @@ Dit egg draait in een enkele container:
 | `root /app/public` | `/home/container/public` (auto of `NGINX_DOCUMENT_ROOT=public`) |
 | `fastcgi_pass php:9000` | `unix:/home/container/.runtime/php-fpm.sock` |
 
-Referentie-vhost om in **Startup → NGINX_CONFIG** te plakken: `docker/nginx/pterodactyl-webserver.conf`.
+Referentie-vhost om in **Startup → NGINX_CONFIG** te plakken: `docker/nginx/erosyn-webserver.conf`.
 
 ## Build container image
 
 ```bash
 cd webserver
-docker build -t ghcr.io/erosyn/pterodactyl-webserver:latest .
+docker build -t ghcr.io/erosyn/erosyn-webserver:latest .
 ```
 
 Push daarna naar je registry en vervang in `egg-webserver.json` de `docker_images` tag indien nodig.
@@ -41,7 +47,7 @@ In deze repository staat een workflow op `.github/workflows/build-webserver-imag
 
 1. Pterodactyl Panel -> Nests -> Import Egg.
 2. Kies `webserver/egg-webserver.json`.
-3. Maak server aan met image `ghcr.io/erosyn/pterodactyl-webserver:latest`.
+3. Maak server aan met image `ghcr.io/erosyn/erosyn-webserver:latest`.
 
 ## Instance settings / variables
 
@@ -70,5 +76,5 @@ php artisan view:cache
 
 Zet in `.env` je externe database host/credentials (bijv. via Pterodactyl Database Hosts).
 
-Gebruik voor `NGINX_CONFIG` de template uit `docker/nginx/pterodactyl-webserver.conf`, of zet alleen `NGINX_DOCUMENT_ROOT=public` / laat `auto` staan zonder custom config.
+Gebruik voor `NGINX_CONFIG` de template uit `docker/nginx/erosyn-webserver.conf`, of zet alleen `NGINX_DOCUMENT_ROOT=public` / laat `auto` staan zonder custom config.
 
