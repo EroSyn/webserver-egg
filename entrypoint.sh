@@ -12,6 +12,7 @@ PHP_SOCKET="${RUNTIME_DIR}/php-fpm.sock"
 PHP_VERSION="${PHP_VERSION:-8.4}"
 APP_SCHEME="${APP_SCHEME:-http}"
 NGINX_CONFIG_RAW="${NGINX_CONFIG:-}"
+NGINX_DOCUMENT_ROOT="${NGINX_DOCUMENT_ROOT:-auto}"
 CONSOLE_MODE="${CONSOLE_MODE:-bash}"
 
 if [[ "$PHP_VERSION" != "8.4" && "$PHP_VERSION" != "8.5" ]]; then
@@ -21,6 +22,11 @@ fi
 
 if [[ "$CONSOLE_MODE" != "bash" && "$CONSOLE_MODE" != "services" ]]; then
   echo "[entrypoint] Unsupported CONSOLE_MODE '$CONSOLE_MODE'. Use bash or services."
+  exit 1
+fi
+
+if [[ "$NGINX_DOCUMENT_ROOT" != "auto" && "$NGINX_DOCUMENT_ROOT" != "public" && "$NGINX_DOCUMENT_ROOT" != "root" ]]; then
+  echo "[entrypoint] Unsupported NGINX_DOCUMENT_ROOT '$NGINX_DOCUMENT_ROOT'. Use auto, public, or root."
   exit 1
 fi
 
@@ -34,12 +40,31 @@ else
   echo "[entrypoint] Could not link ${WEBROOT}; falling back to ${PANEL_DIR} as nginx root."
 fi
 
+case "$NGINX_DOCUMENT_ROOT" in
+  public)
+    NGINX_ROOT="${PANEL_DIR}/public"
+    ;;
+  root)
+    NGINX_ROOT="${EFFECTIVE_WEBROOT}"
+    ;;
+  auto)
+    if [[ -f "${PANEL_DIR}/public/index.php" ]]; then
+      NGINX_ROOT="${PANEL_DIR}/public"
+    else
+      NGINX_ROOT="${EFFECTIVE_WEBROOT}"
+    fi
+    ;;
+esac
+
+echo "[entrypoint] NGINX document root: ${NGINX_ROOT} (NGINX_DOCUMENT_ROOT=${NGINX_DOCUMENT_ROOT})"
+
 PHP_POOL_CONF="${PHP_RUNTIME_DIR}/www.conf"
 PHP_MAIN_CONF="${PHP_RUNTIME_DIR}/php-fpm.conf"
 
 cat > "$PHP_POOL_CONF" <<PHPPOOL
 [www]
 listen = ${PHP_SOCKET}
+chdir = ${PANEL_DIR}
 pm = dynamic
 pm.max_children = 10
 pm.start_servers = 2
@@ -62,11 +87,12 @@ DEFAULT_HTTP_SERVER="server {
     listen 80;
     listen [::]:80;
     server_name _;
-    root ${EFFECTIVE_WEBROOT};
+    server_tokens off;
+    root ${NGINX_ROOT};
     index index.php index.html index.htm;
 
     location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
+        try_files \$uri \$uri/ /index.php\$is_args\$args;
     }
 
     location ~ \\.php$ {
@@ -84,14 +110,15 @@ DEFAULT_HTTPS_SERVER="server {
     listen 443 ssl;
     listen [::]:443 ssl;
     server_name _;
-    root ${EFFECTIVE_WEBROOT};
+    server_tokens off;
+    root ${NGINX_ROOT};
     index index.php index.html index.htm;
 
     ssl_certificate ${SSL_RUNTIME_DIR}/selfsigned.crt;
     ssl_certificate_key ${SSL_RUNTIME_DIR}/selfsigned.key;
 
     location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
+        try_files \$uri \$uri/ /index.php\$is_args\$args;
     }
 
     location ~ \\.php$ {

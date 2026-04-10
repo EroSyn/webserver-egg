@@ -6,9 +6,20 @@ Dit egg draait in een enkele container:
 
 ## Belangrijk gedrag
 
-- Pterodactyl files blijven in `/home/container`.
-- De webroot `/var/www/html` is een symlink naar `/home/container`.
-- Je serveert dus altijd exact dezelfde map als in de Pterodactyl file manager.
+- Pterodactyl files blijven in `/home/container` (zelfde rol als `/app` in `docker/docker-compose.yml`).
+- Standaard NGINX gebruikt `try_files` zoals `docker/nginx/api.conf` (`/index.php$is_args$args`).
+- Met `NGINX_DOCUMENT_ROOT=auto` (default): als `public/index.php` bestaat, is de document root `/home/container/public` (zoals `root /app/public` lokaal).
+- Symlink `/var/www/html` → `/home/container` wordt geprobeerd; lukt dat niet, dan wordt direct `/home/container` gebruikt.
+
+## Pariteit met `docker/`
+
+| Lokaal (Compose) | Pterodactyl egg |
+|------------------|-----------------|
+| Volume `/app` | `/home/container` |
+| `root /app/public` | `/home/container/public` (auto of `NGINX_DOCUMENT_ROOT=public`) |
+| `fastcgi_pass php:9000` | `unix:/home/container/.runtime/php-fpm.sock` |
+
+Referentie-vhost om in **Startup → NGINX_CONFIG** te plakken: `docker/nginx/pterodactyl-webserver.conf`.
 
 ## Build container image
 
@@ -37,7 +48,8 @@ In deze repository staat een workflow op `.github/workflows/build-webserver-imag
 - `CONSOLE_MODE`: `bash` (interactieve shell in console) of `services` (alleen service output)
 - `PHP_VERSION`: `8.4` of `8.5`
 - `APP_SCHEME`: `http` of `https`
-- `NGINX_CONFIG`: custom volledige nginx vhost config (overschrijft default)
+- `NGINX_DOCUMENT_ROOT`: `auto`, `public`, of `root`
+- `NGINX_CONFIG`: custom volledige nginx `server { ... }` (overschrijft default)
 - `SSL_CERT` / `SSL_KEY`: optioneel PEM cert/key voor https default config
 
 ## Laravel deploy (aanrader)
@@ -58,29 +70,5 @@ php artisan view:cache
 
 Zet in `.env` je externe database host/credentials (bijv. via Pterodactyl Database Hosts).
 
-Gebruik voor `NGINX_CONFIG` deze Laravel-geschikte config:
-
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name _;
-    root /home/container/public;
-    index index.php index.html;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        include /etc/nginx/fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_pass unix:/home/container/.runtime/php-fpm.sock;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-```
+Gebruik voor `NGINX_CONFIG` de template uit `docker/nginx/pterodactyl-webserver.conf`, of zet alleen `NGINX_DOCUMENT_ROOT=public` / laat `auto` staan zonder custom config.
 
