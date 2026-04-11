@@ -6,6 +6,7 @@ Dit egg draait in een enkele container:
 
 ## Belangrijk gedrag
 
+- Container-Nginx luistert alleen **HTTP** op `SERVER_PORT`; TLS en vhosts op de **node** (reverse proxy).
 - Pterodactyl files blijven in `/home/container` (zelfde rol als `/app` in `docker/docker-compose.yml`).
 - Standaard NGINX gebruikt `try_files` zoals `docker/nginx/api.conf` (`/index.php$is_args$args`).
 - Met `NGINX_DOCUMENT_ROOT=auto` (default): als `public/index.php` bestaat, is de document root `/home/container/public` (zoals `root /app/public` lokaal).
@@ -25,7 +26,7 @@ Wings start je container vaak met een **numerieke UID** zonder regel in `/etc/pa
 | `root /app/public` | `/home/container/public` (auto of `NGINX_DOCUMENT_ROOT=public`) |
 | `fastcgi_pass php:9000` | `unix:/home/container/.runtime/php-fpm.sock` |
 
-Referentie-vhost om in **Startup → NGINX_CONFIG** te plakken: `docker/nginx/erosyn-webserver.conf`.
+TLS en hostnamen horen op de **node** (Nginx reverse proxy + Cloudflare), niet in de container. Zie `docker/nginx/erosyn-webserver.conf` als referentie voor de **edge**-proxy, niet voor panel-variabelen.
 
 ## Build container image
 
@@ -53,28 +54,9 @@ In deze repository staat een workflow op `.github/workflows/build-webserver-imag
 
 - `CONSOLE_MODE`: `bash` (interactieve shell in console) of `services` (alleen service output)
 - `PHP_VERSION`: `8.4` of `8.5`
-- `APP_SCHEME`: `http` of `https`
 - `NGINX_DOCUMENT_ROOT`: `auto`, `public`, of `root`
-- `NGINX_CONFIG`: custom volledige nginx `server { ... }` (overschrijft default)
-- `SSL_CERT` / `SSL_KEY`: optioneel PEM cert/key voor https default config
 
-## SSL in container (eigen certs)
-
-- Plaats eigen certs in `/home/container/ssl/` als:
-  - `/home/container/ssl/fullchain.pem`
-  - `/home/container/ssl/privkey.pem`
-- Met `APP_SCHEME=https` gebruikt het entrypoint automatisch deze files.
-- Als die ontbreken en `SSL_CERT`/`SSL_KEY` leeg zijn, maakt het entrypoint een self-signed cert.
-
-Self-signed snel genereren in de serverconsole:
-
-```bash
-mkdir -p /home/container/ssl
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout /home/container/ssl/privkey.pem \
-  -out /home/container/ssl/fullchain.pem \
-  -subj "/C=NL/ST=Noord-Holland/L=Amsterdam/O=Erosyn/CN=localhost"
-```
+De container luistert alleen **HTTP** op `SERVER_PORT` (Pterodactyl allocation). **HTTPS, wildcard-cert en domeinen** regel je op de Wings-node + Cloudflare (`proxy_pass` naar het allocation-IP:poort).
 
 ## Laravel deploy (aanrader)
 
@@ -94,5 +76,5 @@ php artisan view:cache
 
 Zet in `.env` je externe database host/credentials (bijv. via Pterodactyl Database Hosts).
 
-Gebruik voor `NGINX_CONFIG` de template uit `docker/nginx/erosyn-webserver.conf`, of zet alleen `NGINX_DOCUMENT_ROOT=public` / laat `auto` staan zonder custom config.
+Zet `NGINX_DOCUMENT_ROOT=public` of laat `auto` staan. Zet in `.env` o.a. `APP_URL=https://jouw-domein` en trusted proxies voor Cloudflare/de node-Nginx.
 
